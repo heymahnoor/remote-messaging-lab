@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messaging Market Priority Calculator</title>
+<meta name="description" content="Concept tool by Mahnoor Shahid: rank markets for a WhatsApp or WeChat lifecycle launch by reach, cost, consent friction and pipeline share.">
+<style>
+:root{--ink:#111827;--ink2:#374151;--muted:#6b7280;--line:#e5e7eb;--bg:#f6f7f9;--card:#fff;--accent:#0f766e;--accent-soft:#ccfbf1;--amber:#b45309;--amber-soft:#fef3c7;--red:#b91c1c;--red-soft:#fee2e2;--blue:#4338ca;--blue-soft:#e0e7ff}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin-top:4px;max-width:760px}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--amber-soft);color:var(--amber)}
+.nav a{font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:10px;display:inline-block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.weights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:800px){.weights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.w label{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.w small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:860px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+td input{width:76px;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+td input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.rank{font-weight:700;width:28px}
+.mkt b{display:block}
+.mkt span{font-size:12px;color:var(--muted)}
+.scorecell{min-width:140px}
+.sbar{height:8px;background:#f3f4f6;border-radius:999px;overflow:hidden;margin-top:4px}
+.sbar>div{height:100%;background:var(--accent)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.w1{background:var(--accent-soft);color:var(--accent)}
+.w2{background:var(--blue-soft);color:var(--blue)}
+.w3{background:#f3f4f6;color:var(--muted)}
+.gate{background:var(--red-soft);color:var(--red)}
+.src{font-size:11px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:800px){.grid2{grid-template-columns:1fr}}
+ul.plain{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink2)}
+ul.plain li{margin:4px 0}
+footer{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="badge">Concept tool · editable data</span>
+      <h1>Where should messaging channels launch first?</h1>
+      <div class="sub">Ranks markets for a WhatsApp (or WeChat) lifecycle launch. Every number is editable, and the pipeline column is meant for Remote's own data. Built by Mahnoor Shahid.</div>
+    </div>
+    <nav class="nav"><a href="index.html">← WhatsApp journey prototype</a></nav>
+  </header>
+
+  <div class="card">
+    <h2>Weights</h2>
+    <div class="weights" id="weights"></div>
+  </div>
+
+  <div class="card">
+    <h2>Ranking <button class="btn" id="reset" type="button" style="float:right">Reset data</button></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Market</th><th>Messaging reach %</th><th>Marketing msg $</th><th>Consent friction (1–5)</th><th>Pipeline share %</th><th class="scorecell">Score</th><th>Suggested wave</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="src" style="margin:10px 0 0">Blank cost = rate not in my sources (scored neutral). Blank pipeline share = ignored; fill it in and that weight switches on.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>How the score works</h2>
+      <ul class="plain">
+        <li><b>Reach:</b> share of people using WhatsApp (or messaging apps), scaled 0–1.</li>
+        <li><b>Cost efficiency:</b> cheaper marketing messages score higher (Meta list rates, Oct 2026).</li>
+        <li><b>Low friction:</b> my 1–5 read of consent and data rules (5 = hardest). Legal should own the final call.</li>
+        <li><b>Pipeline share:</b> where Remote's buyers and hires actually are. The most important input, and the one only Remote has.</li>
+        <li><b>Gated markets</b> (like +1 numbers, where Meta has paused marketing templates) are shown but not ranked: utility and service messages only.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Sources</h2>
+      <ul class="plain">
+        <li>WhatsApp reach by country: <a href="https://www.infobip.com/blog/whatsapp-statistics" target="_blank" rel="noopener">Infobip, WhatsApp statistics 2026</a></li>
+        <li>Germany, Netherlands (any messaging app, Q1 2025): <a href="https://www.destatis.de/Europa/EN/Topic/Science-technology-digital-society/Digital_communication.html" target="_blank" rel="noopener">Destatis / Eurostat</a></li>
+        <li>Marketing rates (1 Oct 2026): <a href="https://getkanal.com/blog/whatsapp-business-pricing-guide" target="_blank" rel="noopener">Meta rate card via Kanal</a>, <a href="https://www.engagelab.com/blog/whatsapp-business-api-pricing" target="_blank" rel="noopener">EngageLab</a></li>
+        <li>US marketing pause, frequency caps: <a href="https://chatarmin.com/en/blog/whats-app-messaging-limits" target="_blank" rel="noopener">Chatarmin, WhatsApp limits (Sept 2026)</a></li>
+        <li>WeChat 1.4B MAU, overseas Service Accounts: <a href="https://blog.omnichat.ai/wechat-official-account/" target="_blank" rel="noopener">Omnichat, WeChat guide 2026</a></li>
+        <li>Consent friction scores: my own assessment (GDPR, UK GDPR/PECR, LGPD, POPIA, DPDP, PIPL), not legal advice.</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>Personal concept for a job application. Not affiliated with or endorsed by Remote. Verify all figures before using them for decisions.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const DEFAULT = [
+    {m:"Brazil", ch:"WhatsApp", reach:85, cost:0.0625, fr:3, note:"LGPD consent"},
+    {m:"Spain", ch:"WhatsApp", reach:85, cost:0.0707, fr:3, note:"GDPR"},
+    {m:"Mexico", ch:"WhatsApp", reach:75, cost:0.0397, fr:2, note:"Rate rose 1 Oct 2026"},
+    {m:"Argentina", ch:"WhatsApp", reach:80, cost:null, fr:2, note:""},
+    {m:"Colombia", ch:"WhatsApp", reach:75, cost:null, fr:2, note:""},
+    {m:"India", ch:"WhatsApp", reach:70, cost:0.0118, fr:2, note:"DPDP Act phasing in"},
+    {m:"United Arab Emirates", ch:"WhatsApp", reach:90, cost:null, fr:2, note:""},
+    {m:"Italy", ch:"WhatsApp", reach:75, cost:null, fr:3, note:"GDPR"},
+    {m:"United Kingdom", ch:"WhatsApp", reach:65, cost:0.0635, fr:3, note:"UK GDPR + PECR"},
+    {m:"South Africa", ch:"WhatsApp", reach:70, cost:null, fr:3, note:"POPIA"},
+    {m:"Netherlands", ch:"WhatsApp", reach:98, cost:null, fr:3, note:"Reach = any messaging app"},
+    {m:"Germany", ch:"WhatsApp", reach:83, cost:0.1365, fr:4, note:"Reach = any messaging app; strict opt-in practice"},
+    {m:"China", ch:"WeChat", reach:null, cost:null, fr:5, note:"WeChat 1.4B MAU; overseas Service Account, 4 broadcasts/month; PIPL"},
+    {m:"United States & Canada", ch:"WhatsApp", reach:null, cost:0.0250, fr:3, gate:"Marketing templates to +1 numbers paused by Meta since Apr 2025"}
+  ];
+  const W = [
+    {k:"reach", label:"Reach", hint:"How many people use the channel", v:35},
+    {k:"cost", label:"Cost efficiency", hint:"Cheaper marketing messages", v:15},
+    {k:"fr", label:"Low friction", hint:"Easier consent and data rules", v:20},
+    {k:"pipe", label:"Pipeline share", hint:"Remote's own data (fill in)", v:30}
+  ];
+  let data = JSON.parse(JSON.stringify(DEFAULT));
+  const wEl = document.getElementById("weights");
+  W.forEach(w => {
+    const d = document.createElement("div"); d.className = "w";
+    d.innerHTML = '<label><span></span><output></output></label><input type="range" min="0" max="50" step="5"><small></small>';
+    d.querySelector("span").textContent = w.label; d.querySelector("small").textContent = w.hint;
+    const r = d.querySelector("input"), o = d.querySelector("output");
+    r.value = w.v; o.textContent = w.v;
+    r.addEventListener("input", () => { w.v = +r.value; o.textContent = r.value; calc(); });
+    wEl.appendChild(d);
+  });
+  document.getElementById("reset").addEventListener("click", () => { data = JSON.parse(JSON.stringify(DEFAULT)); build(); });
+
+  const tbody = document.getElementById("rows");
+  function num(v){ return (v === "" || v === null || isNaN(+v)) ? null : +v; }
+  function build(){
+    tbody.innerHTML = "";
+    data.forEach((r, i) => {
+      const tr = document.createElement("tr"); tr.dataset.i = i;
+      tr.innerHTML = '<td class="rank"></td><td class="mkt"><b></b><span></span></td>' +
+        '<td><input data-f="reach" inputmode="decimal"></td><td><input data-f="cost" inputmode="decimal"></td>' +
+        '<td><input data-f="fr" inputmode="decimal"></td><td><input data-f="pipe" inputmode="decimal" placeholder="your data"></td>' +
+        '<td class="scorecell"><span class="sc"></span><div class="sbar"><div></div></div></td><td class="wave"></td>';
+      tr.querySelector("b").textContent = r.m + (r.ch === "WeChat" ? " (WeChat)" : "");
+      tr.querySelector(".mkt span").textContent = r.gate || r.note || "";
+      tr.querySelectorAll("input").forEach(inp => {
+        const f = inp.dataset.f; const v = r[f];
+        inp.value = (v === null || v === undefined) ? "" : v;
+        inp.addEventListener("input", () => { r[f] = num(inp.value); calc(); });
+      });
+      tbody.appendChild(tr);
+    });
+    calc();
+  }
+  function calc(){
+    const costs = data.filter(r => !r.gate && r.cost !== null).map(r => r.cost);
+    const cMin = Math.min(...costs), cMax = Math.max(...costs);
+    const pipes = data.filter(r => r.pipe !== null && r.pipe !== undefined).map(r => r.pipe);
+    const pMax = pipes.length ? Math.max(...pipes, 0.0001) : null;
+    const wt = {}; W.forEach(w => wt[w.k] = w.v);
+    if(pMax === null) wt.pipe = 0;
+    const tot = wt.reach + wt.cost + wt.fr + wt.pipe || 1;
+    data.forEach(r => {
+      if(r.gate){ r.score = null; return; }
+      const reach = r.reach === null ? 0.5 : Math.min(r.reach, 100) / 100;
+      const cost = r.cost === null ? 0.5 : (cMax === cMin ? 1 : (cMax - r.cost) / (cMax - cMin));
+      const fr = r.fr === null ? 0.5 : Math.max(0, Math.min(1, (5 - r.fr) / 4));
+      const pipe = (pMax === null || r.pipe === null || r.pipe === undefined) ? 0 : r.pipe / pMax;
+      r.score = Math.round(100 * (wt.reach*reach + wt.cost*cost + wt.fr*fr + wt.pipe*pipe) / tot);
+    });
+    const ranked = data.map((r, i) => ({r, i})).sort((a, b) => {
+      if(a.r.score === null) return 1; if(b.r.score === null) return -1; return b.r.score - a.r.score;
+    });
+    ranked.forEach((x, pos) => {
+      const tr = tbody.querySelector('tr[data-i="'+x.i+'"]');
+      tbody.appendChild(tr);
+      tr.querySelector(".rank").textContent = x.r.score === null ? "—" : (pos + 1);
+      tr.querySelector(".sc").textContent = x.r.score === null ? "Not ranked" : x.r.score + "/100";
+      tr.querySelector(".sbar > div").style.width = (x.r.score || 0) + "%";
+      const wave = tr.querySelector(".wave");
+      if(x.r.score === null) wave.innerHTML = '<span class="pill gate">Utility &amp; service only</span>';
+      else if(pos < 3) wave.innerHTML = '<span class="pill w1">Wave 1 · pilot</span>';
+      else if(pos < 7) wave.innerHTML = '<span class="pill w2">Wave 2</span>';
+      else wave.innerHTML = '<span class="pill w3">Later</span>';
+    });
+  }
+  build();
+})();
+</script>
+</body>
+</html>

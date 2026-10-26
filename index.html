@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messaging Channels Lab · WhatsApp lifecycle prototype</title>
+<meta name="description" content="Concept prototype by Mahnoor Shahid: an AI-assisted WhatsApp lifecycle journey with consent, routing and CRM logic shown behind the scenes.">
+<style>
+:root{
+  --ink:#111827; --ink2:#374151; --muted:#6b7280; --line:#e5e7eb; --bg:#f6f7f9; --card:#ffffff;
+  --accent:#0f766e; --accent-soft:#ccfbf1; --amber:#b45309; --amber-soft:#fef3c7; --red:#b91c1c; --red-soft:#fee2e2;
+  --wa-head:#075e54; --wa-bg:#efeae2; --wa-out:#d9fdd3; --wa-in:#ffffff; --wa-btn:#027eb5;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin-top:4px}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--amber-soft);color:var(--amber)}
+.nav a{font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:10px;display:inline-block}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px}
+.tab{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;text-align:left;font:inherit;min-width:220px;flex:1}
+.tab b{display:block;font-size:14px}
+.tab span{font-size:12px;color:var(--muted)}
+.tab[aria-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.grid{display:grid;grid-template-columns:380px 1fr;gap:18px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.phone{margin:0 auto}}
+/* phone */
+.phone{width:100%;max-width:380px;border-radius:28px;background:#111;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.screen{border-radius:20px;overflow:hidden;background:var(--wa-bg);display:flex;flex-direction:column;height:640px}
+.wa-head{background:var(--wa-head);color:#fff;padding:10px 12px;display:flex;align-items:center;gap:10px}
+.avatar{width:38px;height:38px;border-radius:50%;background:#e6fffa;display:grid;place-items:center;overflow:hidden}
+.sticker{align-self:flex-start;width:120px;height:120px}
+.sticker img{width:100%;height:100%}
+.mascot{width:84px;height:84px;flex:none}
+.hero{display:flex;gap:14px;align-items:center}
+.wa-head .name{font-weight:600;font-size:15px}
+.wa-head .status{font-size:11px;opacity:.85}
+.chat{flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:6px}
+.sys{align-self:center;background:#fff7d6;color:#5b4a14;font-size:11.5px;padding:6px 10px;border-radius:8px;max-width:92%;text-align:center}
+.msg{max-width:84%;padding:7px 9px 5px;border-radius:9px;font-size:14px;box-shadow:0 1px 0 rgba(0,0,0,.08);white-space:pre-wrap}
+.in{align-self:flex-start;background:var(--wa-in);border-top-left-radius:2px}
+.out{align-self:flex-end;background:var(--wa-out);border-top-right-radius:2px}
+.meta{display:block;text-align:right;font-size:10px;color:#667781;margin-top:2px}
+.tpl{display:block;font-size:10px;font-weight:700;letter-spacing:.03em;color:#8a6d00;margin-bottom:3px;text-transform:uppercase}
+.doc{display:flex;gap:8px;align-items:center;background:#f0f2f5;border-radius:8px;padding:8px;margin-top:4px;font-size:13px}
+.doc i{font-style:normal;background:#e53935;color:#fff;font-size:10px;font-weight:700;padding:4px 5px;border-radius:4px}
+.replies{display:flex;flex-direction:column;gap:5px;align-self:flex-start;width:84%}
+.qr{background:#fff;border:0;border-radius:9px;color:var(--wa-btn);font:inherit;font-size:14px;padding:8px;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.qr:hover{background:#f5fbff}
+.qr:disabled{opacity:.45;cursor:default}
+.typing{align-self:flex-start;background:#fff;border-radius:9px;padding:8px 12px;font-size:13px;color:#667781}
+.wa-foot{background:#f0f2f5;padding:8px;display:flex;gap:6px}
+.wa-foot button{flex:1;font:inherit;font-size:13px;border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:7px 10px;cursor:pointer}
+/* panel */
+.panel{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.state{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.state{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kv{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:58px}
+.kv .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kv .v{font-size:14px;font-weight:600;margin-top:2px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+.pill.warn{background:var(--amber-soft);color:var(--amber)}
+.pill.no{background:var(--red-soft);color:var(--red)}
+.pill.idle{background:#f3f4f6;color:var(--muted)}
+.bar{height:8px;background:#f3f4f6;border-radius:999px;overflow:hidden;margin-top:6px}
+.bar > div{height:100%;background:var(--accent);width:0;transition:width .4s}
+.log{list-style:none;margin:0;padding:0;max-height:330px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.log li{display:grid;grid-template-columns:86px 1fr;gap:10px;font-size:13px;border-left:3px solid var(--line);padding-left:10px}
+.log li .t{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);padding-top:1px}
+.log li.crm{border-color:#6366f1}.log li.crm .t{color:#4f46e5}
+.log li.consent{border-color:var(--accent)}.log li.consent .t{color:var(--accent)}
+.log li.route{border-color:var(--amber)}.log li.route .t{color:var(--amber)}
+.log li.cost{border-color:#94a3b8}
+.log li.guard{border-color:var(--red)}.log li.guard .t{color:var(--red)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+ul.plain{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink2)}
+ul.plain li{margin:3px 0}
+footer{margin-top:22px;font-size:12.5px;color:var(--muted)}
+.empty{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="hero">
+      <img class="mascot" alt="Remo, a friendly cube mascot concept" src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20420%20420%22%20%3E%20%3Cellipse%20cx%3D%22200%22%20cy%3D%22378%22%20rx%3D%22120%22%20ry%3D%2216%22%20fill%3D%22%230F1B2D%22%20opacity%3D%220.12%22/%3E%20%3C%21--%20arm%20waving%20%28behind%20right%20face%29%20--%3E%20%3Cpath%20d%3D%22M322%20200%20C%20350%20180%2C%20362%20150%2C%20352%20122%22%20stroke%3D%22%230F766E%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%22352%22%20cy%3D%22118%22%20r%3D%2213%22%20fill%3D%22%230F766E%22/%3E%20%3C%21--%20cube%20--%3E%20%3Cpolygon%20points%3D%22200%2C58%20330%2C133%20200%2C208%2070%2C133%22%20fill%3D%22%2399F6E4%22/%3E%20%3Cpolygon%20points%3D%2270%2C133%20200%2C208%20200%2C358%2070%2C283%22%20fill%3D%22%232DD4BF%22/%3E%20%3Cpolygon%20points%3D%22200%2C208%20330%2C133%20330%2C283%20200%2C358%22%20fill%3D%22%230F766E%22/%3E%20%3Cpolygon%20points%3D%22200%2C80%20292%2C133%20200%2C186%20108%2C133%22%20fill%3D%22%23CCFBF1%22%20opacity%3D%220.55%22/%3E%20%3C%21--%20face%20on%20left%20face%2C%20mapped%20from%20a%20100x100%20square%20--%3E%20%3Cg%20transform%3D%22matrix%281.3%2C0.75%2C0%2C1.5%2C70%2C133%29%22%3E%20%3Cellipse%20cx%3D%2232%22%20cy%3D%2238%22%20rx%3D%226%22%20ry%3D%227.5%22%20fill%3D%22%230F1B2D%22/%3E%20%3Cellipse%20cx%3D%2268%22%20cy%3D%2238%22%20rx%3D%226%22%20ry%3D%227.5%22%20fill%3D%22%230F1B2D%22/%3E%20%3Ccircle%20cx%3D%2234%22%20cy%3D%2235.5%22%20r%3D%222%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Ccircle%20cx%3D%2270%22%20cy%3D%2235.5%22%20r%3D%222%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Cellipse%20cx%3D%2222%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%20%3Cellipse%20cx%3D%2278%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%20%3Cpath%20d%3D%22M38%2056%20Q50%2068%2062%2056%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3C/g%3E%20%3C%21--%20left%20arm%20--%3E%20%3Cpath%20d%3D%22M78%20250%20C%2052%20262%2C%2044%20284%2C%2052%20300%22%20stroke%3D%22%232DD4BF%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%2253%22%20cy%3D%22304%22%20r%3D%2212%22%20fill%3D%22%232DD4BF%22/%3E%20%3C%21--%20feet%20--%3E%20%3Crect%20x%3D%22112%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3Crect%20x%3D%22238%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3C%21--%20chat%20bubble%20--%3E%20%3Cg%3E%20%3Crect%20x%3D%22262%22%20y%3D%2218%22%20width%3D%22128%22%20height%3D%2274%22%20rx%3D%2222%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22/%3E%20%3Cpath%20d%3D%22M292%2089%20L284%20112%20L312%2090%20Z%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22%20stroke-linejoin%3D%22round%22/%3E%20%3Crect%20x%3D%22288%22%20y%3D%2286%22%20width%3D%2226%22%20height%3D%228%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Ccircle%20cx%3D%22300%22%20cy%3D%2255%22%20r%3D%228%22%20fill%3D%22%230F766E%22/%3E%20%3Ccircle%20cx%3D%22326%22%20cy%3D%2255%22%20r%3D%228%22%20fill%3D%22%230F766E%22/%3E%20%3Ccircle%20cx%3D%22352%22%20cy%3D%2255%22%20r%3D%228%22%20fill%3D%22%230F766E%22/%3E%20%3C/g%3E%20%3C/svg%3E%20">
+      <div>
+      <span class="badge">Concept prototype · no real data</span>
+      <h1>Messaging Channels Lab: WhatsApp lifecycle journeys</h1>
+      <div class="sub">Built by Mahnoor Shahid for Remote's Lifecycle Marketing team. Tap the replies in the phone and watch the logic run on the right. Remo, the cube, is a mascot concept for the channel.</div>
+      </div>
+    </div>
+    <nav class="nav"><a href="calculator.html">Market priority calculator →</a></nav>
+  </header>
+
+  <div class="tabs" role="tablist" id="tabs"></div>
+
+  <div class="grid">
+    <div class="phone" aria-label="WhatsApp conversation simulator">
+      <div class="screen">
+        <div class="wa-head">
+          <div class="avatar"><img alt="" src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20420%20420%22%20%3E%20%3Cellipse%20cx%3D%22200%22%20cy%3D%22378%22%20rx%3D%22120%22%20ry%3D%2216%22%20fill%3D%22%230F1B2D%22%20opacity%3D%220.12%22/%3E%20%3C%21--%20arm%20waving%20%28behind%20right%20face%29%20--%3E%20%3Cpath%20d%3D%22M322%20200%20C%20350%20180%2C%20362%20150%2C%20352%20122%22%20stroke%3D%22%230F766E%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%22352%22%20cy%3D%22118%22%20r%3D%2213%22%20fill%3D%22%230F766E%22/%3E%20%3C%21--%20cube%20--%3E%20%3Cpolygon%20points%3D%22200%2C58%20330%2C133%20200%2C208%2070%2C133%22%20fill%3D%22%2399F6E4%22/%3E%20%3Cpolygon%20points%3D%2270%2C133%20200%2C208%20200%2C358%2070%2C283%22%20fill%3D%22%232DD4BF%22/%3E%20%3Cpolygon%20points%3D%22200%2C208%20330%2C133%20330%2C283%20200%2C358%22%20fill%3D%22%230F766E%22/%3E%20%3Cpolygon%20points%3D%22200%2C80%20292%2C133%20200%2C186%20108%2C133%22%20fill%3D%22%23CCFBF1%22%20opacity%3D%220.55%22/%3E%20%3C%21--%20face%20on%20left%20face%2C%20mapped%20from%20a%20100x100%20square%20--%3E%20%3Cg%20transform%3D%22matrix%281.3%2C0.75%2C0%2C1.5%2C70%2C133%29%22%3E%20%3Cellipse%20cx%3D%2232%22%20cy%3D%2238%22%20rx%3D%226%22%20ry%3D%227.5%22%20fill%3D%22%230F1B2D%22/%3E%20%3Cellipse%20cx%3D%2268%22%20cy%3D%2238%22%20rx%3D%226%22%20ry%3D%227.5%22%20fill%3D%22%230F1B2D%22/%3E%20%3Ccircle%20cx%3D%2234%22%20cy%3D%2235.5%22%20r%3D%222%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Ccircle%20cx%3D%2270%22%20cy%3D%2235.5%22%20r%3D%222%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Cellipse%20cx%3D%2222%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%20%3Cellipse%20cx%3D%2278%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%20%3Cpath%20d%3D%22M38%2056%20Q50%2068%2062%2056%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3C/g%3E%20%3C%21--%20left%20arm%20--%3E%20%3Cpath%20d%3D%22M78%20250%20C%2052%20262%2C%2044%20284%2C%2052%20300%22%20stroke%3D%22%232DD4BF%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%2253%22%20cy%3D%22304%22%20r%3D%2212%22%20fill%3D%22%232DD4BF%22/%3E%20%3C%21--%20feet%20--%3E%20%3Crect%20x%3D%22112%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3Crect%20x%3D%22238%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3C%21--%20chat%20bubble%20--%3E%20%3Cg%3E%20%3Crect%20x%3D%22262%22%20y%3D%2218%22%20width%3D%22128%22%20height%3D%2274%22%20rx%3D%2222%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22/%3E%20%3Cpath%20d%3D%22M292%2089%20L284%20112%20L312%2090%20Z%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22%20stroke-linejoin%3D%22round%22/%3E%20%3Crect%20x%3D%22288%22%20y%3D%2286%22%20width%3D%2226%22%20height%3D%228%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Ccircle%20cx%3D%22300%22%20cy%3D%2255%22%20r%3D%228%22%20fill%3D%22%230F766E%22/%3E%20%3Ccircle%20cx%3D%22326%22%20cy%3D%2255%22%20r%3D%228%22%20fill%3D%22%230F766E%22/%3E%20%3Ccircle%20cx%3D%22352%22%20cy%3D%2255%22%20r%3D%228%22%20fill%3D%22%230F766E%22/%3E%20%3C/g%3E%20%3C/svg%3E%20" style="width:34px;height:34px"></div>
+          <div><div class="name">Remo · Remote (concept)</div><div class="status" id="waStatus">AI assistant · a person is one tap away</div></div>
+        </div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="wa-foot">
+          <button id="btnHuman" type="button">Talk to a person</button>
+          <button id="btnRestart" type="button">Restart</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <h2>Journey state</h2>
+        <div class="state">
+          <div class="kv"><div class="k">Entry point</div><div class="v" id="sEntry">—</div></div>
+          <div class="kv"><div class="k">Messaging window</div><div class="v" id="sWindow">—</div></div>
+          <div class="kv"><div class="k">WhatsApp consent</div><div class="v" id="sConsent">—</div></div>
+          <div class="kv"><div class="k">Lead score</div><div class="v"><span id="sScore">0</span>/100</div><div class="bar"><div id="sBar"></div></div></div>
+          <div class="kv"><div class="k">Route</div><div class="v" id="sRoute">—</div></div>
+          <div class="kv"><div class="k">Meta cost so far</div><div class="v" id="sCost">$0.0000</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Behind the scenes</h2>
+        <ul class="log" id="log"><li class="empty">Pick a journey above to start.</li></ul>
+      </div>
+
+      <div class="cols">
+        <div class="card">
+          <h2>Guardrails this agent follows</h2>
+          <ul class="plain">
+            <li>Business-scoped AI only (hiring, payroll, booking), in line with Meta's 2026 WhatsApp Business AI terms.</li>
+            <li>Says it's an AI and offers a person on every screen.</li>
+            <li>Consent logged with source, timestamp and scope before any marketing message.</li>
+            <li>Internal cap: max 2 marketing messages per contact per month, on top of Meta's own limits.</li>
+            <li>No marketing templates to +1 numbers while Meta's US pause is in place.</li>
+            <li>STOP works everywhere: one opt-out suppresses WhatsApp and marketing email.</li>
+            <li>No IDs, bank details or salaries of named people collected in chat.</li>
+            <li>Playful voice, serious about money: no jokes in payroll, tax or contract messages.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>What each journey reports</h2>
+          <ul class="plain">
+            <li>Opt-in rate by entry point and market</li>
+            <li>Reply rate and qualified rate per template</li>
+            <li>Meetings booked and pipeline per 1,000 conversations</li>
+            <li>Cost per qualified conversation (Meta + BSP fees)</li>
+            <li>Block, report and opt-out rate (quality guardrail)</li>
+            <li>Lift vs email-only holdout group</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Costs use Meta's list rates per delivered message effective 1 Oct 2026 (UK utility $0.0220, UK marketing $0.0635; messages inside a click-to-WhatsApp 72-hour free entry window cost $0). Names, slots and the cost example are illustrative. This is a personal concept, not an official Remote product, and is not affiliated with or endorsed by Remote.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const chat = $("chat"), log = $("log");
+  let S = null, current = null, clock = 0, busy = false;
+
+  const fmtCost = (n) => "$" + n.toFixed(4);
+  function now(){ clock += 1; const m = 9*60 + 14 + clock; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+
+  function resetState(entry){
+    S = {entry:entry||"—", window:["idle","—"], consent:["idle","Unknown"], score:0, route:["idle","—"], cost:0, interest:null, size:null, timing:null};
+    render();
+  }
+  function render(){
+    $("sEntry").textContent = S.entry;
+    $("sWindow").innerHTML = '<span class="pill '+S.window[0]+'">'+S.window[1]+'</span>';
+    $("sConsent").innerHTML = '<span class="pill '+S.consent[0]+'">'+S.consent[1]+'</span>';
+    $("sScore").textContent = S.score;
+    $("sBar").style.width = S.score + "%";
+    $("sRoute").innerHTML = '<span class="pill '+S.route[0]+'">'+S.route[1]+'</span>';
+    $("sCost").textContent = fmtCost(S.cost);
+  }
+  function addLog(type, text){
+    const first = log.querySelector(".empty"); if(first) first.remove();
+    const li = document.createElement("li"); li.className = (type === "sys") ? "evt" : type;
+    const labels = {crm:"CRM", consent:"Consent", route:"Routing", cost:"Cost", guard:"Guardrail", sys:"Event", ai:"AI agent"};
+    li.innerHTML = '<span class="t">'+(labels[type]||type)+'</span><span></span>';
+    li.lastChild.textContent = text;
+    log.appendChild(li); log.scrollTop = log.scrollHeight;
+  }
+  function bubble(kind, text, opts){
+    opts = opts || {};
+    const d = document.createElement("div");
+    if(kind === "sys"){ d.className = "sys"; d.textContent = text; }
+    else {
+      d.className = "msg " + kind;
+      if(opts.tpl){ const t = document.createElement("span"); t.className = "tpl"; t.textContent = opts.tpl; d.appendChild(t); }
+      d.appendChild(document.createTextNode(text));
+      if(opts.doc){ const doc = document.createElement("div"); doc.className = "doc"; doc.innerHTML = "<i>PDF</i><span></span>"; doc.lastChild.textContent = opts.doc; d.appendChild(doc); }
+      const m = document.createElement("span"); m.className = "meta"; m.textContent = now() + (kind==="out" ? " ✓✓" : ""); d.appendChild(m);
+    }
+    chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+  }
+  function clearReplies(){ chat.querySelectorAll(".replies").forEach(r => r.querySelectorAll("button").forEach(b => b.disabled = true)); }
+  function showReplies(options){
+    const wrap = document.createElement("div"); wrap.className = "replies";
+    options.forEach(o => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "qr"; b.textContent = o.label;
+      b.addEventListener("click", () => { if(busy) return; clearReplies(); bubble("out", o.label); if(o.fx) o.fx(); go(o.next); });
+      wrap.appendChild(b);
+    });
+    chat.appendChild(wrap); chat.scrollTop = chat.scrollHeight;
+  }
+  function go(id){
+    const node = current.nodes[id]; if(!node) return;
+    busy = true;
+    const t = document.createElement("div"); t.className = "typing"; t.textContent = "typing…";
+    chat.appendChild(t); chat.scrollTop = chat.scrollHeight;
+    setTimeout(() => {
+      t.remove();
+      if(node.enter) node.enter();
+      if(node.sticker) sticker(node.sticker);
+      (node.bot || []).forEach(m => typeof m === "string" ? bubble("in", m) : bubble("in", m.text, m));
+      render();
+      busy = false;
+      if(node.options) showReplies(node.options);
+      else if(node.end) bubble("sys", node.end);
+      setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 60);
+    }, 650);
+  }
+  const STICK = {booked:"data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20420%20420%22%20%3E%20%3Cellipse%20cx%3D%22200%22%20cy%3D%22378%22%20rx%3D%22120%22%20ry%3D%2216%22%20fill%3D%22%230F1B2D%22%20opacity%3D%220.12%22/%3E%20%3C%21--%20arm%20waving%20%28behind%20right%20face%29%20--%3E%20%3Cpath%20d%3D%22M322%20200%20C%20350%20180%2C%20362%20150%2C%20352%20122%22%20stroke%3D%22%230F766E%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%22352%22%20cy%3D%22118%22%20r%3D%2213%22%20fill%3D%22%230F766E%22/%3E%20%3C%21--%20cube%20--%3E%20%3Cpolygon%20points%3D%22200%2C58%20330%2C133%20200%2C208%2070%2C133%22%20fill%3D%22%2399F6E4%22/%3E%20%3Cpolygon%20points%3D%2270%2C133%20200%2C208%20200%2C358%2070%2C283%22%20fill%3D%22%232DD4BF%22/%3E%20%3Cpolygon%20points%3D%22200%2C208%20330%2C133%20330%2C283%20200%2C358%22%20fill%3D%22%230F766E%22/%3E%20%3Cpolygon%20points%3D%22200%2C80%20292%2C133%20200%2C186%20108%2C133%22%20fill%3D%22%23CCFBF1%22%20opacity%3D%220.55%22/%3E%20%3C%21--%20face%20on%20left%20face%2C%20mapped%20from%20a%20100x100%20square%20--%3E%20%3Cg%20transform%3D%22matrix%281.3%2C0.75%2C0%2C1.5%2C70%2C133%29%22%3E%3Cpath%20d%3D%22M26%2040%20Q32%2031%2038%2040%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%3Cpath%20d%3D%22M62%2040%20Q68%2031%2074%2040%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%3Cellipse%20cx%3D%2222%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%3Cellipse%20cx%3D%2278%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%3Cpath%20d%3D%22M36%2055%20Q50%2074%2064%2055%20Z%22%20fill%3D%22%230F1B2D%22/%3E%3C/g%3E%20%3C%21--%20left%20arm%20--%3E%20%3Cpath%20d%3D%22M78%20250%20C%2052%20262%2C%2044%20284%2C%2052%20300%22%20stroke%3D%22%232DD4BF%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%2253%22%20cy%3D%22304%22%20r%3D%2212%22%20fill%3D%22%232DD4BF%22/%3E%20%3C%21--%20feet%20--%3E%20%3Crect%20x%3D%22112%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3Crect%20x%3D%22238%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3C%21--%20chat%20bubble%20--%3E%3Cg%3E%3Crect%20x%3D%22262%22%20y%3D%2218%22%20width%3D%22128%22%20height%3D%2274%22%20rx%3D%2222%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22/%3E%3Cpath%20d%3D%22M292%2089%20L284%20112%20L312%2090%20Z%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22%20stroke-linejoin%3D%22round%22/%3E%3Crect%20x%3D%22288%22%20y%3D%2286%22%20width%3D%2226%22%20height%3D%228%22%20fill%3D%22%23FFFFFF%22/%3E%3Cpath%20d%3D%22M300%2056%20L318%2072%20L352%2038%22%20stroke%3D%22%230F766E%22%20stroke-width%3D%2211%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22/%3E%3C/g%3E%20%3C/svg%3E%20", bye:"data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20420%20420%22%20%3E%20%3Cellipse%20cx%3D%22200%22%20cy%3D%22378%22%20rx%3D%22120%22%20ry%3D%2216%22%20fill%3D%22%230F1B2D%22%20opacity%3D%220.12%22/%3E%20%3C%21--%20arm%20waving%20%28behind%20right%20face%29%20--%3E%20%3Cpath%20d%3D%22M322%20200%20C%20350%20180%2C%20362%20150%2C%20352%20122%22%20stroke%3D%22%230F766E%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%22352%22%20cy%3D%22118%22%20r%3D%2213%22%20fill%3D%22%230F766E%22/%3E%20%3C%21--%20cube%20--%3E%20%3Cpolygon%20points%3D%22200%2C58%20330%2C133%20200%2C208%2070%2C133%22%20fill%3D%22%2399F6E4%22/%3E%20%3Cpolygon%20points%3D%2270%2C133%20200%2C208%20200%2C358%2070%2C283%22%20fill%3D%22%232DD4BF%22/%3E%20%3Cpolygon%20points%3D%22200%2C208%20330%2C133%20330%2C283%20200%2C358%22%20fill%3D%22%230F766E%22/%3E%20%3Cpolygon%20points%3D%22200%2C80%20292%2C133%20200%2C186%20108%2C133%22%20fill%3D%22%23CCFBF1%22%20opacity%3D%220.55%22/%3E%20%3C%21--%20face%20on%20left%20face%2C%20mapped%20from%20a%20100x100%20square%20--%3E%20%3Cg%20transform%3D%22matrix%281.3%2C0.75%2C0%2C1.5%2C70%2C133%29%22%3E%20%3Cellipse%20cx%3D%2232%22%20cy%3D%2238%22%20rx%3D%226%22%20ry%3D%227.5%22%20fill%3D%22%230F1B2D%22/%3E%20%3Cellipse%20cx%3D%2268%22%20cy%3D%2238%22%20rx%3D%226%22%20ry%3D%227.5%22%20fill%3D%22%230F1B2D%22/%3E%20%3Ccircle%20cx%3D%2234%22%20cy%3D%2235.5%22%20r%3D%222%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Ccircle%20cx%3D%2270%22%20cy%3D%2235.5%22%20r%3D%222%22%20fill%3D%22%23FFFFFF%22/%3E%20%3Cellipse%20cx%3D%2222%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%20%3Cellipse%20cx%3D%2278%22%20cy%3D%2254%22%20rx%3D%226%22%20ry%3D%223.5%22%20fill%3D%22%23F9A8D4%22%20opacity%3D%220.8%22/%3E%20%3Cpath%20d%3D%22M38%2056%20Q50%2068%2062%2056%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3C/g%3E%20%3C%21--%20left%20arm%20--%3E%20%3Cpath%20d%3D%22M78%20250%20C%2052%20262%2C%2044%20284%2C%2052%20300%22%20stroke%3D%22%232DD4BF%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22/%3E%20%3Ccircle%20cx%3D%2253%22%20cy%3D%22304%22%20r%3D%2212%22%20fill%3D%22%232DD4BF%22/%3E%20%3C%21--%20feet%20--%3E%20%3Crect%20x%3D%22112%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3Crect%20x%3D%22238%22%20y%3D%22318%22%20width%3D%2234%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22%230F1B2D%22/%3E%20%3C%21--%20chat%20bubble%20--%3E%3Cg%3E%3Crect%20x%3D%22262%22%20y%3D%2218%22%20width%3D%22128%22%20height%3D%2274%22%20rx%3D%2222%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22/%3E%3Cpath%20d%3D%22M292%2089%20L284%20112%20L312%2090%20Z%22%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%230F1B2D%22%20stroke-width%3D%225%22%20stroke-linejoin%3D%22round%22/%3E%3Crect%20x%3D%22288%22%20y%3D%2286%22%20width%3D%2226%22%20height%3D%228%22%20fill%3D%22%23FFFFFF%22/%3E%3Ctext%20x%3D%22326%22%20y%3D%2267%22%20text-anchor%3D%22middle%22%20font-family%3D%22DejaVu%20Sans%2C%20Arial%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2232%22%20fill%3D%22%230F766E%22%3Ebye%21%3C/text%3E%3C/g%3E%20%3C/svg%3E%20"};
+  function sticker(k){ const d=document.createElement("div"); d.className="sticker"; const i=document.createElement("img"); i.alt="Remo sticker"; i.onload=()=>{ chat.scrollTop=chat.scrollHeight; }; i.src=STICK[k]; d.appendChild(i); chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+  function score(n){ S.score = Math.max(0, Math.min(100, S.score + n)); }
+
+  /* ---------- Journey 1: acquisition ---------- */
+  const acquisition = {
+    key:"acq", title:"New prospect from a hiring guide", desc:"Click-to-WhatsApp → AI qualifies → hot, warm or cool route",
+    start(){
+      resetState("Click-to-WhatsApp ad · Brazil hiring guide");
+      S.window = ["ok","72h free entry window"];
+      bubble("sys","A head of People at a UK startup reads Remote's guide to hiring in Brazil and taps “Chat on WhatsApp”.");
+      addLog("sys","Entry: click-to-WhatsApp ad on the Brazil hiring guide. UTM source captured.");
+      addLog("cost","Business replied within 24h, so Meta's 72-hour free entry window is open: every message in this journey is $0.");
+      bubble("out","Hi! I'm reading your guide on hiring in Brazil.");
+      render(); go("hello");
+    },
+    nodes:{
+      hello:{ bot:["Hi! 👋 I'm Remo, Remote's AI assistant. I know a slightly worrying amount about hiring in Brazil, and a real person is one tap away any time.\n\nWhat are you looking to do?"],
+        enter(){ addLog("guard","AI disclosure shown in first message; 'Talk to a person' available on every screen."); },
+        options:[
+          {label:"Hire employees (EOR)", next:"size", fx(){ S.interest="EOR"; score(25); addLog("crm","product_interest = Employer of Record"); }},
+          {label:"Pay contractors", next:"size", fx(){ S.interest="Contractors"; score(15); addLog("crm","product_interest = Contractor management"); }},
+          {label:"Run payroll for my own entity", next:"size", fx(){ S.interest="Payroll"; score(20); addLog("crm","product_interest = Global payroll"); }},
+          {label:"Just researching", next:"cool", fx(){ S.interest="Research"; score(5); addLog("crm","product_interest = Researching"); }}
+        ]},
+      size:{ bot:["Nice. Roughly how many people in Brazil over the next 6 months?"],
+        options:[
+          {label:"1–2", next:"timing", fx(){ S.size="1-2"; score(10); addLog("crm","planned_headcount_brazil = 1–2"); }},
+          {label:"3–10", next:"timing", fx(){ S.size="3-10"; score(25); addLog("crm","planned_headcount_brazil = 3–10"); }},
+          {label:"10+", next:"timing", fx(){ S.size="10+"; score(35); addLog("crm","planned_headcount_brazil = 10+"); }}
+        ]},
+      timing:{ bot:["And when should the first one start?"],
+        options:[
+          {label:"Within 30 days", next:"consent", fx(){ S.timing="30d"; score(25); addLog("crm","first_start = within 30 days"); }},
+          {label:"1–3 months", next:"consent", fx(){ S.timing="1-3m"; score(15); addLog("crm","first_start = 1–3 months"); }},
+          {label:"Not sure yet", next:"consent", fx(){ S.timing="unsure"; score(0); addLog("crm","first_start = unknown"); }}
+        ]},
+      consent:{ bot:["Want Brazil's employer cost breakdown here on WhatsApp, plus the odd hiring update?\n\nMax 2 messages a month. Reply STOP any time and I'll go quiet, no hard feelings."],
+        options:[
+          {label:"Yes, send it here", next:"route", fx(){ S.consent=["ok","Opted in (marketing)"]; addLog("consent","whatsapp_marketing = opted_in · source: CTWA Brazil guide · scope: hiring updates · timestamp stored"); }},
+          {label:"Just email me", next:"route", fx(){ S.consent=["warn","Service only"]; addLog("consent","whatsapp_marketing = not given · email nurture only · WhatsApp limited to replies she starts"); }}
+        ]},
+      route:{ enter(){
+          const hot = (S.interest==="EOR"||S.interest==="Payroll") && (S.size==="3-10"||S.size==="10+") && S.timing!=="unsure";
+          const node = hot ? "hot" : "warm";
+          addLog("ai","Lead score " + S.score + "/100 → " + (hot ? "HOT: book with sales now" : "WARM: educate, then offer a call"));
+          setTimeout(() => go(node), 50);
+        }},
+      hot:{ bot:["You're moving fast, love that. Let me get you time with a Brazil hiring specialist. Pick a slot (UK time):"],
+        enter(){ S.route=["ok","Sales · EMEA"]; addLog("route","Routed to Sales: territory rule UK company → EMEA AE with LATAM expertise. Slots pulled from AE calendar."); addLog("crm","Lifecycle stage → Sales Qualified Lead"); },
+        options:[
+          {label:"Tue 10:00", next:"booked"},{label:"Wed 15:00", next:"booked"},{label:"Thu 11:30", next:"booked"}
+        ]},
+      booked:{ sticker:"booked", bot:["Booked ✅ Your specialist will walk you through Brazil costs, timelines and contracts. A calendar invite is on its way to your email, and I'll send a reminder here an hour before."],
+        enter(){ addLog("crm","Meeting booked · deal created (Brazil, EOR) · conversation summary attached to the deal"); addLog("route","Slack alert to AE with a 3-line AI summary of the chat"); addLog("sys","Reminder scheduled as a utility template 1h before the call"); },
+        end:"Journey complete: hot lead booked in under 2 minutes, with consent and context saved."},
+      warm:{ bot:[{text:"Here's the Brazil employer cost breakdown 👇", doc:"Hiring in Brazil: employer costs (guide)"}, "Want a quick call to map costs for your first hire, or shall I just keep you posted?"],
+        enter(){ S.route=["warn","Nurture"]; addLog("route","Warm: guide sent, AI offers a call. Enrolled in Brazil nurture (email + WhatsApp only if opted in)."); },
+        options:[
+          {label:"Book a call", next:"hot", fx(){ score(20); addLog("ai","Prospect asked for a call → upgraded to hot"); }},
+          {label:"Keep me posted", next:"nurtured"}
+        ]},
+      nurtured:{ bot:["Will do. I'll only message when there's something useful about hiring in Brazil. Reply here any time if you have a question."],
+        enter(){ addLog("crm","Lifecycle stage → MQL · next touch in 14 days, channel chosen by engagement"); },
+        end:"Journey complete: warm lead nurtured on her preferred channel, no pressure."},
+      cool:{ bot:[{text:"No problem! Here's the guide to keep 👇", doc:"Hiring in Brazil: the complete guide"}, "I won't message you unless you ask. Reply UPDATES for one Brazil hiring update a month. Pinky promise. (I don't have pinkies. I'm a cube.)"],
+        enter(){ S.route=["idle","Self-serve"]; S.consent=["idle","Not asked"]; addLog("route","Cool: content only, no follow-up pressure. Email nurture continues if she's subscribed."); },
+        end:"Journey complete: researcher served instantly, no spam."}
+    }
+  };
+
+  /* ---------- Journey 2: demo no-show ---------- */
+  const noshow = {
+    key:"noshow", title:"Demo no-show", desc:"Utility template → reschedule, recording or close-lost reason",
+    start(){
+      resetState("Missed demo (HubSpot trigger)");
+      S.window = ["warn","Template only"]; S.consent=["ok","Opted in (service)"];
+      bubble("sys","Sam (UK) booked a Remote demo but didn't join. Two hours later a workflow fires.");
+      addLog("sys","Trigger: meeting outcome = no-show. Sam opted in to WhatsApp updates when booking.");
+      addLog("cost","Outside any open window, so a pre-approved UTILITY template is required: UK rate $0.0220.");
+      S.cost += 0.0220;
+      bubble("in","Hi Sam, we missed you at today's Remote demo. No worries, want to pick a new time?",{tpl:"Utility template · demo_missed_reschedule"});
+      render();
+      showReplies(this.first);
+    },
+    first:[
+      {label:"Reschedule", next:"slots", fx(){ openWindow(); score(30); }},
+      {label:"Send me the recording", next:"recording", fx(){ openWindow(); score(15); }},
+      {label:"Not interested anymore", next:"why", fx(){ openWindow(); }}
+    ],
+    nodes:{
+      slots:{ bot:["Of course! Here are the next open slots with your rep:"],
+        options:[{label:"Tomorrow 09:30", next:"rebooked"},{label:"Fri 14:00", next:"rebooked"}]},
+      rebooked:{ sticker:"booked", bot:["Done ✅ Updated invite sent. Anything you want the demo to focus on?"],
+        enter(){ S.route=["ok","Sales · same AE"]; addLog("crm","Meeting rescheduled · no-show recovered (tracked as its own KPI)"); },
+        options:[{label:"EOR costs", next:"focus"},{label:"Contractor payments", next:"focus"},{label:"Payroll", next:"focus"}]},
+      focus:{ bot:["Noted. I've passed that to your rep so the call starts where you need it."],
+        enter(){ addLog("crm","demo_focus saved to the meeting notes for the AE"); },
+        end:"Journey complete: no-show recovered with one template, rest free inside the window."},
+      recording:{ bot:[{text:"Here you go: a short on-demand walkthrough 👇", doc:"Remote demo: on-demand walkthrough"}, "Which part matters most for you?"],
+        enter(){ S.route=["warn","Nurture + AE alert"]; addLog("route","Recording sent. AE alerted only if she watches 50%+ or asks a question."); },
+        options:[{label:"EOR", next:"focus2"},{label:"Contractors", next:"focus2"},{label:"Payroll", next:"focus2"}]},
+      focus2:{ bot:["Great. I'll share one practical guide on that next week, and you can book a call here any time."],
+        enter(){ addLog("crm","product_interest updated · enrolled in matching nurture"); },
+        end:"Journey complete: interest captured, no hard sell."},
+      why:{ bot:["Thanks for letting us know. Mind sharing why? It helps us improve."],
+        options:[
+          {label:"Too expensive", next:"closed", fx(){ addLog("crm","closed_lost_reason = price"); }},
+          {label:"Chose another provider", next:"closed", fx(){ addLog("crm","closed_lost_reason = competitor"); }},
+          {label:"Bad timing", next:"later", fx(){ addLog("crm","closed_lost_reason = timing · recycle in 90 days"); }}
+        ]},
+      closed:{ bot:["Understood, thank you! I won't send more messages about this. If anything changes, just say hi here."],
+        enter(){ S.route=["idle","Closed lost"]; S.consent=["warn","Paused"]; addLog("guard","Marketing paused for this contact; reason fed to Sales and Product dashboards."); },
+        end:"Journey complete: clean close-lost reason captured instead of silence."},
+      later:{ bot:["Makes sense. Shall I check back in about 3 months?"],
+        options:[{label:"Yes please", next:"recycle"},{label:"No thanks", next:"closed"}]},
+      recycle:{ bot:["Perfect, talk then! 👋"],
+        enter(){ S.route=["warn","Recycle · 90 days"]; addLog("crm","Task: re-engage in 90 days via utility check-in"); },
+        end:"Journey complete: lead recycled with permission."}
+    }
+  };
+  function openWindow(){ S.window = ["ok","24h service window"]; addLog("cost","Sam replied, so a 24-hour service window opened: free-form replies are free (first 1,000 a month per number)."); }
+
+  /* ---------- Journey 3: expansion ---------- */
+  const expansion = {
+    key:"exp", title:"Customer expanding to a new country", desc:"Intent signals → marketing template → CSM handoff",
+    start(){
+      resetState("Expansion signal (customer)");
+      S.window = ["warn","Template only"]; S.consent=["ok","Opted in (product news)"];
+      bubble("sys","Priya runs People at an existing UK customer. This week her company posted a role in Mexico City and two admins opened the Mexico country guide in-app.");
+      addLog("ai","Signal agent: job post in Mexico (external) + 2 Mexico guide views (product) → expansion intent score 78/100.");
+      addLog("guard","Checks before sending: opted in to product news ✓ · under 2 marketing messages this month ✓ · not a +1 number ✓ · local time 10:05 ✓");
+      addLog("cost","Business-initiated MARKETING template to a UK number: $0.0635.");
+      S.cost += 0.0635; score(60);
+      bubble("in","Hi Priya, looks like your team may be hiring in Mexico 🇲🇽. Want a quick look at what it takes to employ someone there with Remote?",{tpl:"Marketing template · expansion_new_country"});
+      render(); showReplies(this.first);
+    },
+    first:[
+      {label:"Yes, show me", next:"card", fx(){ S.window=["ok","24h service window"]; score(20); addLog("cost","Reply opened a 24h service window: follow-ups are free-form."); }},
+      {label:"Not now", next:"notnow", fx(){ S.window=["ok","24h service window"]; }},
+      {label:"Stop these messages", next:"stop", fx(){ S.window=["ok","24h service window"]; }}
+    ],
+    nodes:{
+      card:{ bot:[{text:"Here's a one-page overview 👇", doc:"Employing in Mexico with Remote: overview"}, "Want your account manager to set it up with you? They already know your account."],
+        options:[{label:"Yes, loop them in", next:"csm"},{label:"I'll read first", next:"read"}]},
+      csm:{ bot:["Done! Your account manager has the context and will message you here today."],
+        enter(){ S.route=["ok","CSM · expansion"]; addLog("crm","Expansion opportunity created (Mexico, 1+ seat) · owner = account manager"); addLog("route","Handoff to a person in the shared inbox, with the full thread and signal summary"); },
+        end:"Journey complete: expansion opportunity opened from a signal, not a guess."},
+      read:{ bot:["Sounds good. I'll check in once next week, then leave it with you."],
+        enter(){ S.route=["warn","Follow-up · 7 days"]; addLog("crm","Task: one follow-up in 7 days, then stop"); },
+        end:"Journey complete: one polite follow-up, then silence."},
+      notnow:{ bot:["No problem! I'll leave it here. If Mexico comes up again, just reply."],
+        enter(){ S.route=["idle","Snoozed · 60 days"]; addLog("guard","Expansion messages snoozed for 60 days for this contact"); },
+        end:"Journey complete: respected 'not now'."},
+      stop:{ sticker:"bye", bot:["Done. No more product news from me on WhatsApp. You'll still get important account and payroll notices, because those really matter."],
+        enter(){ S.consent=["no","Opted out"]; S.route=["idle","Suppressed"]; addLog("consent","whatsapp_marketing = opted_out · synced to email marketing suppression"); addLog("guard","Opt-out rate tracked per template; templates above threshold get paused for review"); },
+        end:"Journey complete: one tap opt-out, honored on every channel."}
+    }
+  };
+
+  const journeys = [acquisition, noshow, expansion];
+  const tabs = $("tabs");
+  journeys.forEach((j, i) => {
+    const b = document.createElement("button"); b.type="button"; b.className="tab"; b.setAttribute("role","tab");
+    b.innerHTML = "<b></b><span></span>"; b.firstChild.textContent = (i+1) + ". " + j.title; b.lastChild.textContent = j.desc;
+    b.addEventListener("click", () => start(j));
+    tabs.appendChild(b);
+  });
+  function start(j){
+    current = j; clock = 0; busy = false;
+    chat.innerHTML = ""; log.innerHTML = "";
+    tabs.querySelectorAll(".tab").forEach((t, i) => t.setAttribute("aria-selected", journeys[i] === j ? "true" : "false"));
+    j.start();
+  }
+  $("btnRestart").addEventListener("click", () => start(current || acquisition));
+  $("btnHuman").addEventListener("click", () => {
+    if(!current || busy) return;
+    clearReplies();
+    bubble("out","I'd like to talk to a person");
+    bubble("in","Of course! Getting you a human now. They'll see this whole chat, so no repeating yourself.");
+    S.route = ["ok","Human · shared inbox"]; render();
+    addLog("route","Human handoff: conversation moved to the shared inbox with an AI summary. Bot paused for this thread.");
+    bubble("sys","Handoff complete. The AI stays quiet until the teammate hands back.");
+  });
+  start(acquisition);
+})();
+</script>
+</body>
+</html>
